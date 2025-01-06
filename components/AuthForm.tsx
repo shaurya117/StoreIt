@@ -18,6 +18,8 @@ import { useState } from "react"
 import Image from "next/image";
 import Link from "next/link";
 import { createAccount } from "@/lib/actions/user.actions"
+import OTPMODAL from "./OTPMODAL";
+import OtpModal from "./OTPMODAL";
 
 
 
@@ -123,7 +125,7 @@ const AuthForm = ({type}: {type: FormType}) => {
 
       <div className="body-2 flex justify-center">
         <p className="text-light-100">
-            {type === "sign-in"? "Don't have an account?": "Already have an accout?"}
+            {type === "sign-in"? "Don't have an account?": "Already have an account?"}
         </p>
 
         <Link
@@ -138,6 +140,11 @@ const AuthForm = ({type}: {type: FormType}) => {
 
     </form>
   </Form>
+
+  
+  {accountId && (
+        <OtpModal email={form.getValues("email")} accountId={accountId} />
+      )}
   
   </>
   )

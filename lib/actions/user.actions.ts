@@ -5,6 +5,7 @@ import { createAdminClient } from "../appwrite";
 import { appwriteConfig } from "../appwrite/config";
 import { string } from "zod";
 import { parseStringify } from "../utils";
+import { cookies } from "next/headers";
 
 const getUserByEmail = async (email: string) => {
   const { databases } = await createAdminClient();
@@ -23,7 +24,17 @@ const handleError = (error: unknown, message: string) => {
   throw error;
 };
 
-const sendEmailOTP = async ({ email }: { email: string }) => {
+/*
+The commented out code didn't work because:
+ Error: "ReferenceError: sessionStorage is not defined" occurred when trying to use `sessionStorage` in the server-side context (during SSR or server-side execution).
+ This error happened because `sessionStorage` is only available in the browser environment, not on the server.
+ 
+ Fix: The code was updated to check if we are running in the browser by verifying `typeof window !== 'undefined'`. 
+ This ensures that `sessionStorage` is only accessed when the code is running in the client-side environment.
+
+
+
+export const sendEmailOTP = async ({ email }: { email: string }) => {
   const { account } = await createAdminClient();
 
   try {
@@ -33,7 +44,26 @@ const sendEmailOTP = async ({ email }: { email: string }) => {
   } catch (error) {
     handleError(error, "Failed to send email OTP");
   }
+};*/
+
+export const sendEmailOTP = async ({ email }: { email: string }) => {
+  const { account } = await createAdminClient();
+  try {
+    const session = await account.createEmailToken(ID.unique(), email);
+
+    // Check if we are in the browser before accessing sessionStorage
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      // Use sessionStorage only in the browser
+      sessionStorage.setItem("userId", session.userId);
+    }
+
+    return session.userId;
+  } catch (error) {
+    console.error("Failed to send email OTP", error);
+    throw new Error("Failed to send email OTP");
+  }
 };
+
 
 export const createAccount = async ({
   fullName,
@@ -66,3 +96,18 @@ export const createAccount = async ({
 
   return parseStringify({accountId});
 };
+
+export const verifySecret = async({accountId, password}: {accountId:string; password:string}) =>{
+
+  try{
+    const {account} = await createAdminClient();
+    const session = await account.createSession(accountId, password);
+    (await cookies()).set('appwrite-session', session.secret, {path:'/', httpOnly: true, sameSite:'strict',secure: true,});
+
+    return parseStringify({sessionId: session.$id})
+
+
+  }catch(error){
+    handleError(error, "Failed to verify OTP")
+  }
+}
